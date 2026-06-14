@@ -1,8 +1,11 @@
+import os
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import cantera as ct
+
+os.makedirs('plots', exist_ok=True)
 
 print(f"Cantera version: {ct.__version__}")
 
@@ -131,7 +134,7 @@ finish_plot(fig, ax,
             xlabel='H$_2$ fraction in fuel blend [vol.%]',
             ylabel='Laminar flame speed $S_u$ [cm/s]',
             title='Effect of H$_2$ enrichment on laminar flame speed',
-            fname='flame_speed.png')
+            fname='plots/flame_speed.png')
 
 fig, ax = plt.subplots()
 ax.plot(h2_pct, results['T_max'], 's-', color='firebrick',
@@ -141,7 +144,7 @@ finish_plot(fig, ax,
             xlabel='H$_2$ fraction in fuel blend [vol.%]',
             ylabel='Maximum flame temperature [K]',
             title='Effect of H$_2$ enrichment on maximum flame temperature',
-            fname='flame_temperature.png')
+            fname='plots/flame_temperature.png')
 
 fig, ax = plt.subplots()
 ax.plot(h2_pct, results['NO_ppm'], '^-', color='darkorange',
@@ -151,7 +154,7 @@ finish_plot(fig, ax,
             xlabel='H$_2$ fraction in fuel blend [vol.%]',
             ylabel='NO mole fraction [ppm]',
             title='Effect of H$_2$ enrichment on NO emissions',
-            fname='NO_emission.png')
+            fname='plots/NO_emission.png')
 
 fig, ax = plt.subplots()
 ax.plot(h2_pct, results['OH_max'], 'o-', color='green',  label='OH')
@@ -162,7 +165,7 @@ finish_plot(fig, ax,
             xlabel='H$_2$ fraction in fuel blend [vol.%]',
             ylabel='Peak mole fraction [-]',
             title='Effect of H$_2$ enrichment on key radical concentrations',
-            fname='radicals.png')
+            fname='plots/radicals.png')
 
 def shift_to_flame(grid, T):
     dT = np.gradient(T, grid)
@@ -180,7 +183,7 @@ finish_plot(fig, ax,
             xlabel='Position [cm]',
             ylabel='Temperature [K]',
             title='Spatial temperature profile: 0% vs 50% H$_2$',
-            fname='temperature_profile.png')
+            fname='plots/temperature_profile.png')
 
 fig, ax = plt.subplots()
 ax.plot(g0_shifted,  results['HRR_profile_0']  / 1e6, '-',  color='royalblue', label='0% H$_2$')
@@ -190,6 +193,6 @@ finish_plot(fig, ax,
             xlabel='Position [cm]',
             ylabel='Heat release rate [MW/m$^3$]',
             title='Spatial heat release rate profile: 0% vs 50% H$_2$',
-            fname='HRR_profile.png')
+            fname='plots/HRR_profile.png')
 
 print("\nAll plots saved successfully.")
