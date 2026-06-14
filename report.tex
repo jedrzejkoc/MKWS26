@@ -1,0 +1,482 @@
+\documentclass[12pt,a4paper]{article}
+
+% ── Packages ─────────────────────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{setspace}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{parskip}
+
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = blue!60!black,
+  citecolor  = green!50!black,
+  urlcolor   = blue!60!black,
+}
+
+% ── Title block ───────────────────────────────────────────────────────────────
+\title{%
+  \textbf{Influence of Hydrogen Enrichment of Methane on
+  Laminar Flame Speed and NO$_x$ Emissions}\\[0.8em]
+  \large Computational Methods in Combustion
+}
+\author{Jędrzej Koc\\[0.3em]
+}
+\date{\today}
+
+% =============================================================================
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+% ─────────────────────────────────────────────────────────────────────────────
+
+
+\newpage
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+The global energy sector is under increasing pressure to reduce greenhouse gas
+emissions and transition toward sustainable energy carriers. Natural gas, composed
+predominantly of methane, currently plays a central role in power generation and
+industrial heating owing to its relatively low carbon intensity compared with coal
+or oil. However, even complete combustion of methane releases CO$_2$, and the
+transition to a truly low-carbon energy system requires either carbon capture or a
+shift toward carbon-free fuels.
+
+Hydrogen is widely regarded as a key element of this transition. It releases no
+CO$_2$ upon combustion, has a very high energy content per unit mass, and can be
+produced from renewable electricity via electrolysis (so-called green hydrogen).
+A pragmatic near-term pathway to decarbonisation is the blending of H$_2$ into
+the existing natural gas grid---a strategy already tested at the distribution
+scale in several countries. Such blending enables incremental emission reductions
+while the infrastructure, safety standards, and economic frameworks for pure
+hydrogen supply chains mature.
+
+From a combustion-engineering perspective, however, hydrogen addition to methane
+significantly alters flame behaviour. The high diffusivity and low ignition energy
+of H$_2$ can improve flame stability, but also raise safety concerns related to
+flashback and detonation risk. Changes in laminar flame speed, radical chemistry,
+and adiabatic flame temperature all directly affect burner design, emission
+formation, and operability limits. A quantitative, mechanistically grounded
+understanding of these effects is therefore essential for engineers tasked with
+adapting existing combustion equipment to hydrogen-enriched fuels.
+
+This report addresses this need through a computational parametric study. The
+laminar flame speed $S_u$, maximum flame temperature $T_\mathrm{max}$, NO
+emissions, radical peak concentrations, and spatial flame structure are evaluated
+as functions of hydrogen volume fraction in the CH$_4$/H$_2$ fuel blend.
+
+% =============================================================================
+\section{Literature Review}
+\label{sec:lit}
+
+The combustion characteristics of hydrogen-enriched natural gas (HENG) have been
+the subject of extensive research over the past two decades. The following
+paragraphs summarise the principal findings relevant to the present study.
+
+\textbf{Laminar flame speed.} It is well established that the laminar burning
+velocity of CH$_4$/H$_2$/air mixtures increases monotonically with hydrogen
+fraction. Huang~et~al.~\cite{Huang2006} and Halter~et~al.~\cite{Halter2005}
+measured this increase experimentally and attributed it to both the significantly
+higher intrinsic burning velocity of pure hydrogen ($\approx 200\,\mathrm{cm/s}$
+at stoichiometry) and to enhanced chain-branching kinetics that H$_2$ introduces
+into the methane oxidation pathway. Di~Sarli and Di~Benedetto~\cite{DiSarli2007}
+confirmed through numerical simulation that even moderate H$_2$ additions (below
+30\,\%) produce a disproportionate increase in $S_u$ relative to what a linear
+blending rule would predict.
+
+\textbf{Radical pool and chemical kinetic enhancement.} The kinetic
+acceleration of HENG flames is closely linked to the enrichment of the radical
+pool, particularly OH, H, and O. Hydrogen addition provides additional H atoms
+via thermal decomposition, which then participate in the key chain-branching
+reaction H + O$_2$ $\rightarrow$ OH + O. This positive feedback loop greatly
+amplifies the overall reactivity of the mixture beyond the contribution of H$_2$
+as a pure energy source. Studies using sensitivity analysis
+\cite{Schefer2002,Coppens2007} consistently identify the H + O$_2$ reaction as
+the most sensitive step, and confirm that radical-pool enhancement is the dominant
+kinetic mechanism at low-to-moderate H$_2$ blending ratios.
+
+\textbf{Adiabatic flame temperature and NOx.} Theoretical considerations and
+measurements agree that H$_2$ addition raises the adiabatic flame temperature at
+stoichiometric conditions, primarily because the lower carbon-to-hydrogen ratio
+reduces heat capacity while the combustion enthalpy per unit volume remains high.
+This temperature increase has a strong positive effect on thermal NO formation via
+the extended Zeldovich mechanism \cite{Zeldovich1947}, and numerous studies
+\cite{Guo2010,Zhang2007} report elevated NO$_x$ emissions in HENG flames
+proportional to the temperature increase. The consensus is that the NOx penalty
+is a significant engineering challenge that must be addressed through staged
+combustion, lean premixing, or exhaust gas recirculation.
+
+\textbf{Flame structure.} Spatially resolved measurements and simulations show
+that hydrogen enrichment decreases the flame thickness---defined as the width of
+the preheat zone---due to the higher thermal diffusivity of H$_2$ and the more
+compact reaction zone. This results in a narrower, more intense heat-release
+profile and influences flame--turbulence interaction in practical burners.
+
+% =============================================================================
+\section{Model Description}
+\label{sec:model}
+
+\subsection{Software and Kinetic Mechanism}
+
+All simulations were performed using Cantera~3.2 \cite{Cantera}, an open-source
+object-oriented software package for chemical kinetics and reacting-flow
+calculations. The one-dimensional freely propagating premixed flame model
+(\texttt{ct.FreeFlame}) was employed, which solves the steady-state conservation
+equations for mass, species, and energy on an adaptive grid using the Newton
+method with automatic Jacobian evaluation.
+
+The GRI~Mech~3.0 mechanism \cite{Smith1999} (\texttt{gri30.yaml}) was used for
+all simulations. It contains 53 species and 325 elementary reactions, covering
+methane oxidation, C$_2$ chemistry, and the full NO$_x$ formation sub-mechanism
+including the thermal (Zeldovich), prompt (Fenimore), and N$_2$O pathways. This
+makes it the standard choice for studying NOx formation in methane-based premixed
+flames.
+
+\subsection{Flame Configuration and Boundary Conditions}
+
+The computational setup is summarised in Table~\ref{tab:conditions}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Simulation parameters.}
+  \label{tab:conditions}
+  \begin{tabular}{lll}
+    \toprule
+    Parameter & Symbol & Value \\
+    \midrule
+    Unburned gas temperature & $T_u$ & 300\,K \\
+    Pressure                 & $P$   & 1\,atm (101\,325\,Pa) \\
+    Equivalence ratio        & $\phi$ & 1.0 \\
+    H$_2$ fraction in fuel   & $x_{\mathrm{H_2}}$ & 0, 10, 20, 30, 40, 50\,vol.\% \\
+    CH$_4$ fraction in fuel  & $x_{\mathrm{CH_4}}$ & $1 - x_{\mathrm{H_2}}$ \\
+    Oxidiser                 & ---   & Dry air (21\,\% O$_2$, 79\,\% N$_2$) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Mixture Composition}
+
+For each hydrogen fraction $x_{\mathrm{H_2}}$ (mole fraction of H$_2$ in the
+fuel blend), the stoichiometric oxygen requirement per mole of fuel is:
+
+\begin{equation}
+  n_{\mathrm{O_2,stoich}} = 2\,x_{\mathrm{CH_4}} + 0.5\,x_{\mathrm{H_2}}
+  \label{eq:O2_stoich}
+\end{equation}
+
+where $x_{\mathrm{CH_4}} = 1 - x_{\mathrm{H_2}}$. At equivalence ratio $\phi$,
+the actual oxygen supplied is $n_{\mathrm{O_2}} = n_{\mathrm{O_2,stoich}}/\phi$,
+and the nitrogen is set by the air composition:
+$n_{\mathrm{N_2}} = n_{\mathrm{O_2}} \times (79/21)$.
+
+\subsection{Grid and Solver Settings}
+
+The initial domain width was set to 3\,cm. Automatic grid refinement was enabled
+with the following criteria: ratio~3, slope~0.06, curve~0.12, and a prune
+threshold of 0.01. These settings ensure that steep gradients in temperature and
+species profiles are adequately resolved while avoiding unnecessary grid points in
+smooth regions. The solver was allowed to iterate through three stages of
+increasing refinement until all criteria were satisfied (\texttt{auto=True}).
+
+% =============================================================================
+\section{Results and Discussion}
+\label{sec:results}
+
+\subsection{Laminar Flame Speed}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{flame_speed.png}
+  \caption{Laminar flame speed $S_u$ as a function of hydrogen fraction in the
+           CH$_4$/H$_2$ fuel blend at $\phi = 1.0$, $T_u = 300\,\mathrm{K}$,
+           $P = 1\,\mathrm{atm}$.}
+  \label{fig:flame_speed}
+\end{figure}
+
+Figure~\ref{fig:flame_speed} shows a clear, super-linear increase in the laminar
+flame speed with hydrogen enrichment. The pure methane flame ($x_{\mathrm{H_2}}
+= 0$) attains a speed of approximately 37--38\,cm/s, consistent with the
+well-established experimental reference value for CH$_4$/air at stoichiometry.
+As H$_2$ content rises to 50\,vol.\%, the flame speed increases by more than
+50\,\%, reaching values above 55\,cm/s.
+
+Three physical mechanisms contribute to this acceleration. First, H$_2$ itself
+has an intrinsically high burning velocity ($\approx\!200\,\mathrm{cm/s}$), and
+even small additions shift the mixture's effective reactivity. Second, hydrogen's
+high thermal diffusivity ($\alpha_{\mathrm{H_2}} \approx 5 \times
+\alpha_{\mathrm{CH_4}}$) enhances preheat-zone conduction, allowing the unburned
+gas to reach ignition temperature more rapidly. Third, and most importantly at
+moderate blending ratios, H$_2$ dramatically amplifies the radical pool
+(discussed in Section~\ref{sec:radicals}), accelerating the rate-limiting
+chain-branching steps of hydrocarbon oxidation.
+
+The super-linear character of the increase---visible in Fig.~\ref{fig:flame_speed}
+as an upward curvature---is a well-known feature of HENG flames and is explained
+by the synergistic interaction between H$_2$ kinetics and the methane oxidation
+network rather than a simple mixing effect.
+
+\subsection{Maximum Flame Temperature}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{flame_temperature.png}
+  \caption{Maximum adiabatic flame temperature as a function of hydrogen fraction.}
+  \label{fig:T_max}
+\end{figure}
+
+The maximum flame temperature shown in Figure~\ref{fig:T_max} increases
+approximately linearly with hydrogen content, rising by roughly 80\,K over the
+studied range. This increase arises from two thermodynamic effects. First,
+replacing part of the CH$_4$ (which produces CO$_2$ and H$_2$O upon combustion)
+with H$_2$ (which produces only H$_2$O) reduces the specific heat of the product
+mixture, since CO$_2$ has a higher molar heat capacity than H$_2$O. Second, the
+higher hydrogen-to-carbon ratio means proportionally more water vapour in the
+products, and the combustion enthalpy released per unit mole of oxygen consumed
+is slightly higher for H$_2$ than for CH$_4$. Both effects result in a higher
+adiabatic flame temperature, which has direct consequences for thermal NO
+formation (see Section~\ref{sec:NOx}).
+
+\subsection{NO Emissions}
+\label{sec:NOx}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{NO_emission.png}
+  \caption{NO mole fraction (as ppm) in the burned gas as a function of hydrogen
+           fraction.}
+  \label{fig:NO}
+\end{figure}
+
+Figure~\ref{fig:NO} demonstrates a significant increase in NO emissions with
+hydrogen enrichment. The dominant formation pathway in premixed methane/air flames
+near stoichiometry is the thermal (Zeldovich) mechanism:
+
+\begin{align}
+  \mathrm{N_2} + \mathrm{O}  &\;\rightleftharpoons\; \mathrm{NO} + \mathrm{N} \label{eq:Z1}\\
+  \mathrm{N}   + \mathrm{O_2} &\;\rightleftharpoons\; \mathrm{NO} + \mathrm{O} \label{eq:Z2}\\
+  \mathrm{N}   + \mathrm{OH}  &\;\rightleftharpoons\; \mathrm{NO} + \mathrm{H} \label{eq:Z3}
+\end{align}
+
+The rate of Reaction~\eqref{eq:Z1} has an extremely strong temperature dependence
+(activation energy $\approx\!314\,\mathrm{kJ/mol}$), expressed by:
+
+\begin{equation}
+  k_1 = A\,T^n \exp\!\left(-\frac{E_a}{RT}\right)
+  \label{eq:Arrhenius}
+\end{equation}
+
+The 80\,K increase in $T_\mathrm{max}$ shown in Fig.~\ref{fig:T_max} therefore
+translates into a disproportionately large increase in the Zeldovich NO formation
+rate, explaining the steep rise in NO concentration seen in Fig.~\ref{fig:NO}.
+The elevated OH radical concentration (Fig.~\ref{fig:radicals}) further promotes
+Reaction~\eqref{eq:Z3}, creating an additional feedback loop between radical
+enrichment and NOx formation.
+
+This result underscores a fundamental trade-off in HENG combustion: hydrogen
+addition improves burning velocity and combustion stability, but simultaneously
+increases the thermal NOx penalty. Mitigation strategies---such as lean premixing,
+exhaust gas recirculation, or selective catalytic reduction (SCR)---are therefore
+critical for practical HENG burner applications.
+
+\subsection{Radical Pool Enhancement}
+\label{sec:radicals}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{radicals.png}
+  \caption{Peak mole fractions of OH, H, and O radicals as a function of hydrogen
+           fraction.}
+  \label{fig:radicals}
+\end{figure}
+
+Figure~\ref{fig:radicals} reveals that the peak concentrations of all three key
+flame radicals---OH, H, and O---increase monotonically with hydrogen enrichment.
+The H radical, in particular, shows a pronounced increase, consistent with H$_2$
+decomposition acting as an additional source of H atoms in the preheat zone via:
+
+\begin{equation}
+  \mathrm{H_2} + \mathrm{M} \;\rightleftharpoons\; \mathrm{H} + \mathrm{H} + \mathrm{M}
+\end{equation}
+
+and via abstraction by O:
+\begin{equation}
+  \mathrm{H_2} + \mathrm{O} \;\rightleftharpoons\; \mathrm{OH} + \mathrm{H}
+\end{equation}
+
+The resulting surplus of H atoms accelerates the critical chain-branching step:
+\begin{equation}
+  \mathrm{H} + \mathrm{O_2} \;\rightarrow\; \mathrm{OH} + \mathrm{O}
+  \label{eq:chainbranch}
+\end{equation}
+
+which simultaneously increases OH and O concentrations. The expanded radical pool
+accelerates the overall oxidation rate of both CH$_4$ and CO, leading to the
+higher laminar flame speeds observed in Fig.~\ref{fig:flame_speed}. This
+mechanism also explains the super-linear dependence of $S_u$ on H$_2$ content:
+the radical chain-branching creates an autocatalytic amplification effect that
+grows faster than the linear increase in H$_2$ concentration alone would suggest.
+
+\subsection{Spatial Flame Structure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{temperature_profile.png}
+  \caption{Spatial temperature profiles for the 0\,\% and 50\,\% H$_2$ cases
+           (grids shifted so the point of maximum temperature gradient is at
+           $x = 0$).}
+  \label{fig:T_profile}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{HRR_profile.png}
+  \caption{Spatial heat release rate (HRR) profiles for the 0\,\% and 50\,\%
+           H$_2$ cases.}
+  \label{fig:HRR}
+\end{figure}
+
+Figures~\ref{fig:T_profile} and~\ref{fig:HRR} compare the spatial flame
+structure for the two extreme cases: pure methane and 50\,\% hydrogen enrichment.
+Both grids have been shifted so that the point of maximum temperature gradient
+coincides with $x = 0$, enabling a direct comparison of flame structure rather
+than absolute flame position.
+
+\textbf{Temperature profile (Fig.~\ref{fig:T_profile}).} The 50\,\% H$_2$ flame
+exhibits a steeper temperature rise over a shorter spatial distance. This narrowing
+of the preheat zone is a direct consequence of the higher thermal diffusivity of
+H$_2$ relative to CH$_4$: a larger fraction of the heat released in the reaction
+zone is conducted upstream into the unburned mixture, raising the local temperature
+gradient and, by Le Chatelier's principle applied to the energy equation,
+compressing the preheat zone. The final burned-gas temperature is also higher, as
+expected from Fig.~\ref{fig:T_max}.
+
+\textbf{Heat release rate profile (Fig.~\ref{fig:HRR}).} The peak HRR is
+significantly higher for the 50\,\% H$_2$ case, and the reaction zone (defined
+by the region where HRR $> 10$\,\% of peak) is markedly narrower. This behaviour
+is consistent with the higher laminar flame speed: since the flame consumes the
+reactant mixture faster per unit area, the volumetric heat release rate must
+increase to supply the required power output. The narrowing of the HRR profile
+has important implications for turbulent combustion: a thinner reaction zone is
+more susceptible to turbulent stretching and local quenching, potentially
+affecting the lean blowout limit at elevated hydrogen fractions.
+
+% =============================================================================
+\section{Conclusions}
+\label{sec:conclusions}
+
+The following key engineering conclusions are drawn from this computational study
+of hydrogen-enriched methane combustion:
+
+\begin{itemize}
+  \item \textbf{Laminar flame speed increases substantially with H$_2$ addition.}
+        From $\approx\!37\,\mathrm{cm/s}$ for pure CH$_4$, the speed rises to
+        $>\!55\,\mathrm{cm/s}$ at 50\,\% H$_2$, a gain of over 50\,\% driven by
+        radical-pool kinetics and enhanced thermal diffusivity.
+
+  \item \textbf{Maximum flame temperature rises by $\approx\!80$\,K.}
+        The thermodynamic shift caused by replacing CO$_2$-producing methane
+        combustion with H$_2$O-producing hydrogen combustion increases the
+        adiabatic flame temperature monotonically.
+
+  \item \textbf{NO emissions increase significantly.}
+        The Zeldovich thermal mechanism, highly sensitive to temperature, produces
+        substantially more NO as the flame temperature rises, presenting a critical
+        challenge for emission compliance.
+
+  \item \textbf{Radical pool (OH, H, O) is enriched by H$_2$.}
+        The chain-branching cycle H + O$_2$ $\rightarrow$ OH + O is strongly
+        amplified by the additional H atoms provided by H$_2$ decomposition,
+        explaining the super-linear increase in flame speed.
+
+  \item \textbf{The reaction zone narrows and intensifies with H$_2$ addition.}
+        Spatial profiles show a thinner preheat zone and a higher, narrower HRR
+        peak, implying increased susceptibility to turbulent disruption and
+        flashback at high H$_2$ fractions.
+
+  \item \textbf{Hydrogen blending is a viable but constrained decarbonisation
+        strategy.}
+        While HENG reduces CO$_2$ emissions proportionally to the hydrogen
+        fraction, the NOx and flashback penalties require active mitigation
+        through burner redesign, lean premixing, or post-combustion treatment.
+\end{itemize}
+
+% =============================================================================
+
+\begin{thebibliography}{99}
+
+\bibitem{Huang2006}
+  Z.~Huang, Y.~Zhang, K.~Zeng, B.~Liu, Q.~Wang, D.~Jiang,
+  \textit{Measurements of laminar burning velocities for natural gas-hydrogen-air
+  mixtures},
+  Combustion and Flame 146 (2006) 302--311.
+
+\bibitem{Halter2005}
+  F.~Halter, C.~Chauveau, N.~Djebaili-Chaumeix, I.~Gökalp,
+  \textit{Characterization of the effects of pressure and hydrogen concentration
+  on laminar burning velocities of methane--hydrogen--air mixtures},
+  Proceedings of the Combustion Institute 30 (2005) 201--208.
+
+\bibitem{DiSarli2007}
+  V.~Di~Sarli, A.~Di~Benedetto,
+  \textit{Laminar burning velocity of hydrogen--methane/air premixed flames},
+  International Journal of Hydrogen Energy 32 (2007) 637--646.
+
+\bibitem{Schefer2002}
+  R.~W.~Schefer,
+  \textit{Hydrogen enrichment for improved lean flame stability},
+  International Journal of Hydrogen Energy 28 (2003) 1131--1141.
+
+\bibitem{Coppens2007}
+  F.~H.~V.~Coppens, J.~De~Ruyck, A.~A.~Konnov,
+  \textit{The effects of composition on burning velocity and nitric oxide
+  formation in laminar premixed flames of CH$_4$ + H$_2$ + O$_2$ + N$_2$},
+  Combustion and Flame 149 (2007) 409--417.
+
+\bibitem{Zeldovich1947}
+  Ya.~B.~Zel'dovich,
+  \textit{The oxidation of nitrogen in combustion and explosions},
+  Acta Physicochimica URSS 21 (1946) 577--628.
+
+\bibitem{Guo2010}
+  H.~Guo, B.~Smallwood, F.~Liu, Y.~Ju, Ö.~L.~Gülder,
+  \textit{The effect of hydrogen addition on flammability limit and NOx emission
+  in ultra-lean counterflow CH$_4$/air premixed flames},
+  Proceedings of the Combustion Institute 30 (2005) 303--311.
+
+\bibitem{Zhang2007}
+  Y.~Zhang, Z.~Huang, L.~Wei, J.~Zhang, C.~K.~Law,
+  \textit{Experimental and modeling study on ignition delays of lean mixtures of
+  methane, hydrogen, oxygen, and argon at elevated pressures},
+  Combustion and Flame 150 (2007) 1--13.
+
+\bibitem{Cantera}
+  D.~G.~Goodwin, R.~L.~Speth, H.~K.~Moffat, B.~W.~Weber,
+  \textit{Cantera: An object-oriented software toolkit for chemical kinetics,
+  thermodynamics, and transport processes},
+  Version 3.2, 2024, \url{https://www.cantera.org}.
+
+\bibitem{Smith1999}
+  G.~P.~Smith, D.~M.~Golden, M.~Frenklach, N.~W.~Moriarty, B.~Eiteneer,
+  M.~Goldenberg, C.~T.~Bowman, R.~K.~Hanson, S.~Song, W.~C.~Gardiner,
+  V.~V.~Lissianski, Z.~Qin,
+  GRI-Mech 3.0, 1999, \url{http://combustion.berkeley.edu/gri-mech/}.
+
+\end{thebibliography}
+
+\end{document}
